@@ -90,6 +90,30 @@ app.post("/api/reports", async (req, res) => {
   log(`📝 Получен запрос: ${channelUrl}, ${startDate} - ${endDate}`);
   log(`🆔 Создаем отчет ${id} для канала ${username}`);
 
+  // Создаем временный отчет сразу
+  const tempReportData = {
+    id: id,
+    channel_url: channelUrl,
+    channel_username: username,
+    start_date: startDate,
+    end_date: endDate,
+    created_at: new Date().toISOString(),
+    total_posts: 0,
+    posts_in_period: 0,
+    posts_details: {},
+    screenshots: [],
+    stats: {
+      totalChars: 0,
+      avgChars: 0,
+      postsWithText: 0,
+    },
+    status: "Обрабатывается..."
+  };
+
+  const tempReportPath = path.join(uploadDir, `report_${id}.json`);
+  fs.writeFileSync(tempReportPath, JSON.stringify(tempReportData, null, 2));
+  log(`💾 Создан временный отчет ${id}`);
+
   // Отправляем ответ сразу
   res.json({
     success: true,
@@ -97,10 +121,18 @@ app.post("/api/reports", async (req, res) => {
     message: "Отчет создается...",
   });
 
-  // Обрабатываем в фоне
+  // Обрабатываем в фоне с таймаутом
   log("🚀 Начинаем обработку в фоне...");
   try {
-    const result = await processChannel(username, startDate, endDate);
+    // Добавляем таймаут 10 минут для всего процесса
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Превышен таймаут обработки (10 минут)')), 600000);
+    });
+    
+    const result = await Promise.race([
+      processChannel(username, startDate, endDate),
+      timeoutPromise
+    ]);
 
     log(`📊 Подготавливаем данные отчета:`);
     log(
@@ -125,6 +157,7 @@ app.post("/api/reports", async (req, res) => {
         avgChars: 0,
         postsWithText: 0,
       },
+      status: "Завершен"
     };
 
     log(`   Скриншотов в отчете: ${reportData.screenshots.length}`);
@@ -135,6 +168,31 @@ app.post("/api/reports", async (req, res) => {
     log("✅ Отчет успешно сохранен");
   } catch (error) {
     log(`❌ Ошибка при создании отчета: ${error.message}`);
+    
+    // Обновляем отчет с ошибкой
+    const errorReportData = {
+      id: id,
+      channel_url: channelUrl,
+      channel_username: username,
+      start_date: startDate,
+      end_date: endDate,
+      created_at: new Date().toISOString(),
+      total_posts: 0,
+      posts_in_period: 0,
+      posts_details: {},
+      screenshots: [],
+      stats: {
+        totalChars: 0,
+        avgChars: 0,
+        postsWithText: 0,
+      },
+      status: "Ошибка",
+      error: error.message
+    };
+    
+    const errorReportPath = path.join(uploadDir, `report_${id}.json`);
+    fs.writeFileSync(errorReportPath, JSON.stringify(errorReportData, null, 2));
+    log(`💾 Сохранен отчет с ошибкой ${id}`);
   }
 });
 
@@ -148,14 +206,10 @@ app.get("/api/reports/:id", (req, res) => {
     if (fs.existsSync(reportPath)) {
       log(`✅ Отчет ${id} найден`);
       const reportData = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-      res.json({
-        success: true,
-        data: reportData,
-      });
+      res.json(reportData); // Возвращаем данные напрямую
     } else {
       log(`❌ Отчет ${id} не найден`);
       res.status(404).json({
-        success: false,
         error: "Отчет не найден",
       });
     }
@@ -1200,12 +1254,17 @@ async function processChannel(channelUsername, startDate, endDate) {
     };
   } catch (error) {
     log(`❌ Ошибка при обработке канала: ${error.message}`);
-    
+
     // Специальная обработка ошибок таймаута
-    if (error.message.includes('timeout') || error.message.includes('timed out')) {
-      log(`⏰ Обнаружена ошибка таймаута. Попробуйте уменьшить период или повторить позже.`);
+    if (
+      error.message.includes("timeout") ||
+      error.message.includes("timed out")
+    ) {
+      log(
+        `⏰ Обнаружена ошибка таймаута. Попробуйте уменьшить период или повторить позже.`
+      );
     }
-    
+
     return {
       total: 0,
       inPeriod: 0,
