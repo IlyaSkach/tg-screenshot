@@ -4,11 +4,12 @@
   "description": "Telegram Screenshot Application",
   "scripts": {
     "start": "cd backend && npm start",
-    "build": "cd frontend && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "postinstall": "npm run build"
   },
-  "devDependencies": {
+  "dependencies": {
     "concurrently": "^8.2.2"
   },
   "engines": {

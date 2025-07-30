@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node simple-count-server.js",
     "dev": "nodemon simple-count-server.js",
-    "build": "cd ../frontend && npm install && npm run build",
-    "postinstall": "npm run build"
+    "build": "cd ../frontend && npm install && npm run build"
   },
   "dependencies": {
     "express": "^4.18.2",
