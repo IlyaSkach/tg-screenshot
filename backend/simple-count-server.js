@@ -178,6 +178,7 @@ async function processChannel(channelUsername, startDate, endDate) {
     browser = await puppeteer.launch({
       headless: true, // Полностью скрытый режим
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      protocolTimeout: 300000, // 5 минут таймаут для протокола
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -298,7 +299,7 @@ async function processChannel(channelUsername, startDate, endDate) {
         log(`   Попытка ${attempts}/${maxAttempts} загрузки страницы...`);
         await page.goto(channelUrl, {
           waitUntil: "domcontentloaded",
-          timeout: 120000,
+          timeout: 300000, // 5 минут
         });
         pageLoaded = true;
         log("✅ Страница канала загружена");
@@ -312,7 +313,7 @@ async function processChannel(channelUsername, startDate, endDate) {
           try {
             await page.goto(channelUrl, {
               waitUntil: "load",
-              timeout: 60000,
+              timeout: 300000, // 5 минут
             });
             pageLoaded = true;
             log("✅ Страница загружена альтернативным способом");
@@ -478,7 +479,7 @@ async function processChannel(channelUsername, startDate, endDate) {
 
       await page.goto(postsUrl, {
         waitUntil: "networkidle2",
-        timeout: 60000,
+        timeout: 300000, // 5 минут
       });
 
       log("✅ Страница с постами загружена");
@@ -974,7 +975,7 @@ async function processChannel(channelUsername, startDate, endDate) {
 
           await page.goto(postUrl, {
             waitUntil: "networkidle2",
-            timeout: 30000,
+            timeout: 120000, // 2 минуты
           });
           log(`   ⏳ Ждем загрузки поста...`);
           await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -990,7 +991,7 @@ async function processChannel(channelUsername, startDate, endDate) {
           // Ждем загрузки поста с более гибким подходом
           try {
             await page.waitForSelector(".tgme_widget_message", {
-              timeout: 10000,
+              timeout: 60000, // 1 минута
             });
             log(`   ✅ Пост ${post.id} загружен (найден .tgme_widget_message)`);
           } catch (error) {
@@ -1008,7 +1009,7 @@ async function processChannel(channelUsername, startDate, endDate) {
             let foundSelector = null;
             for (const selector of alternativeSelectors) {
               try {
-                await page.waitForSelector(selector, { timeout: 5000 });
+                await page.waitForSelector(selector, { timeout: 30000 }); // 30 секунд
                 foundSelector = selector;
                 log(`   ✅ Найден альтернативный селектор: ${selector}`);
                 break;
@@ -1199,6 +1200,12 @@ async function processChannel(channelUsername, startDate, endDate) {
     };
   } catch (error) {
     log(`❌ Ошибка при обработке канала: ${error.message}`);
+    
+    // Специальная обработка ошибок таймаута
+    if (error.message.includes('timeout') || error.message.includes('timed out')) {
+      log(`⏰ Обнаружена ошибка таймаута. Попробуйте уменьшить период или повторить позже.`);
+    }
+    
     return {
       total: 0,
       inPeriod: 0,
