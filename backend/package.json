@@ -1,0 +1,23 @@
+{
+  "name": "tg-screenshot-backend",
+  "version": "1.0.0",
+  "description": "Telegram Screenshot Backend",
+  "main": "simple-count-server.js",
+  "scripts": {
+    "start": "node simple-count-server.js",
+    "dev": "nodemon simple-count-server.js",
+    "build": "cd ../frontend && npm install && npm run build",
+    "postinstall": "npm run build"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "puppeteer": "^21.5.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
