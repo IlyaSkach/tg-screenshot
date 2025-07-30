@@ -3,4 +3,9 @@ uploads/
 .env
 .DS_Store
 *.log
-.git/ 
+.git/
+Dockerfile*
+docker-compose*
+.dockerignore
+build.sh
+run.sh 

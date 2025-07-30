@@ -91,12 +91,17 @@ function App() {
   const viewReport = async (reportId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/reports/${reportId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      if (data.success) {
-        setCurrentReport(data.data);
+      if (data.error) {
+        alert("Ошибка при получении отчета: " + data.error);
       } else {
-        alert("Ошибка при получении отчета");
+        setCurrentReport(data);
       }
     } catch (error) {
       alert("Ошибка при получении отчета: " + error.message);
@@ -327,7 +332,7 @@ function App() {
                                       ) : (
                                         <div className="screenshot-container">
                                           <img
-                                            src={`${API_BASE_URL}/uploads/screenshots/${screenshot.file_path}`}
+                                            src={`${API_BASE_URL}/uploads/${screenshot.file_path}`}
                                             alt={`Скриншот поста ${screenshot.id}`}
                                             className="post-screenshot-image"
                                             onError={(e) => {

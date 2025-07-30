@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Telegram Screenshot Application",
   "scripts": {
-    "start": "cd backend && npm start || (cp -r ../node_modules . && npm start)",
+    "start": "cd backend && npm start",
     "build": "cd frontend && npm install && npm run build",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
@@ -13,7 +13,7 @@
     "concurrently": "^8.2.2",
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "puppeteer": "^21.5.2"
+    "puppeteer": "^22.8.2"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -15,8 +15,8 @@ function log(message) {
   console.log(`[${timestamp}] ${message}`);
 }
 
-const uploadDir = "./uploads";
-const screenshotDir = "./uploads/screenshots";
+const uploadDir = path.join(__dirname, "uploads");
+const screenshotDir = path.join(__dirname, "uploads", "screenshots");
 
 // Создаем папки если их нет
 if (!fs.existsSync(uploadDir)) {
@@ -28,16 +28,50 @@ if (!fs.existsSync(screenshotDir)) {
 
 app.use("/uploads", express.static(uploadDir));
 
-// Добавляем статические файлы фронта
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// Маршрут для всех остальных запросов (SPA)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-});
-
+// API маршруты должны быть ПЕРЕД статическими файлами
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/api/reports", (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadDir);
+    const reports = files
+      .filter((file) => file.startsWith("report_") && file.endsWith(".json"))
+      .map((file) => {
+        const content = fs.readFileSync(path.join(uploadDir, file), "utf8");
+        return JSON.parse(content);
+      })
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json(reports);
+  } catch (error) {
+    log(`❌ Ошибка при получении отчетов: ${error.message}`);
+    res.status(500).json({ error: "Ошибка при получении отчетов" });
+  }
+});
+
+app.get("/api/reports/:id", (req, res) => {
+  try {
+    const reportPath = path.join(uploadDir, `report_${req.params.id}.json`);
+    if (fs.existsSync(reportPath)) {
+      const content = fs.readFileSync(reportPath, "utf8");
+      res.json(JSON.parse(content));
+    } else {
+      res.status(404).json({ error: "Отчет не найден" });
+    }
+  } catch (error) {
+    log(`❌ Ошибка при получении отчета ${req.params.id}: ${error.message}`);
+    res.status(500).json({ error: "Ошибка при получении отчета" });
+  }
+});
+
+// Добавляем статические файлы фронта ПОСЛЕ API маршрутов
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// Маршрут для всех остальных запросов (SPA) - должен быть ПОСЛЕДНИМ
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });
 
 app.post("/api/reports", async (req, res) => {
@@ -143,6 +177,7 @@ async function processChannel(channelUsername, startDate, endDate) {
     log("🌐 Запускаем браузер...");
     browser = await puppeteer.launch({
       headless: true, // Полностью скрытый режим
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -153,6 +188,28 @@ async function processChannel(channelUsername, startDate, endDate) {
         "--disable-background-timer-throttling",
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
+        "--disable-extensions",
+        "--disable-plugins",
+        "--disable-images",
+        "--disable-javascript",
+        "--disable-default-apps",
+        "--disable-sync",
+        "--disable-translate",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--no-first-run",
+        "--safebrowsing-disable-auto-update",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-hang-monitor",
+        "--disable-prompt-on-repost",
+        "--disable-domain-reliability",
+        "--disable-features=TranslateUI",
+        "--disable-ipc-flooding-protection",
       ],
     });
 
@@ -1087,7 +1144,7 @@ async function processChannel(channelUsername, startDate, endDate) {
           screenshots.push({
             id: post.id,
             type: "post",
-            file_path: filename,
+            file_path: `screenshots/${filename}`,
             file_size: fileStats.size,
             date: post.date,
             text: postText,
